@@ -372,6 +372,7 @@ _MACHINE_OUTPUTS = [
 # These error categories are no longer enforced by cpplint, but for backwards-
 # compatibility they may still appear in NOLINT comments.
 _LEGACY_ERROR_CATEGORIES = [
+    'build/class',
     'readability/streams',
     'readability/function',
     ]
