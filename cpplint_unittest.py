@@ -43,7 +43,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
-
+from parameterized import parameterized
 import pytest
 
 import cpplint
@@ -228,6 +228,12 @@ class CpplintTestBase(unittest.TestCase):
                                       error_collector, io)
     return error_collector.Results()
 
+  # Perform lint and make sure one of the errors is what we want
+  def TestLintContains(self, code, expected_message):
+    self.assertTrue(expected_message in self.PerformSingleLineLint(code))
+  def TestLintNotContains(self, code, expected_message):
+    self.assertFalse(expected_message in self.PerformSingleLineLint(code))
+
   # Perform lint and compare the error message with "expected_message".
   def TestLint(self, code, expected_message):
     self.assertEqual(expected_message, self.PerformSingleLineLint(code))
@@ -266,7 +272,6 @@ class CpplintTestBase(unittest.TestCase):
         error_collector.Results().count(
             'Redundant blank line at the end of a code block '
             'should be deleted.  [whitespace/blank_line] [3]'))
-
 
 class CpplintTest(CpplintTestBase):
 
@@ -1248,6 +1253,12 @@ class CpplintTest(CpplintTestBase):
         auto res = map<Bar>();
         """,
         '')
+    # False positive for boost::container::set
+    self.TestIncludeWhatYouUse(
+        """
+        boost::container::set<int> foo;
+        """,
+        '')
 
   def testFilesBelongToSameModule(self):
     f = cpplint.FilesBelongToSameModule
@@ -2210,6 +2221,14 @@ class CpplintTest(CpplintTestBase):
                { { 1, 2 },
                  { 3, 4 } };""",
         '')
+    self.TestMultiLineLint(  # should not claim else should have braces on both sides
+      """if (foo) {
+        bar;
+      }
+      else {
+        baz;
+      }""",
+      'An else should appear on the same line as the preceding }  [whitespace/newline] [4]')
 
   # CHECK/EXPECT_TRUE/EXPECT_FALSE replacements
   def testCheckCheck(self):
@@ -2451,7 +2470,9 @@ class CpplintTest(CpplintTestBase):
                   operand_error_message % 'std::vector<int>& p')
     # Returning an address of something is not prohibited.
     self.TestLint('return &something;', '')
-    self.TestLint('if (condition) {return &something; }', '')
+    self.TestLint('if (condition) {return &something; }',
+                  'Controlled statements inside brackets of if clause should be on a separate line'
+                  '  [whitespace/newline] [5]')
     self.TestLint('if (condition) return &something;', '')
     self.TestLint('if (condition) address = &something;', '')
     self.TestLint('if (condition) result = lhs&rhs;', '')
@@ -2649,8 +2670,8 @@ class CpplintTest(CpplintTestBase):
     self.TestLint('for (foo;bar;baz) {', 'Missing space after ;'
                   '  [whitespace/semicolon] [3]')
     # we don't warn about this semicolon, at least for now
-    self.TestLint('if (condition) {return &something; }',
-                  '')
+    self.TestLintNotContains('if (condition) { return &something; }',
+                  'Missing space after ;  [whitespace/semicolon] [3]')
     # seen in some macros
     self.TestLint('DoSth();\\', '')
     # Test that there is no warning about semicolon here.
@@ -2758,7 +2779,7 @@ class CpplintTest(CpplintTestBase):
                   '')
 
   def testSemiColonAfterBraces(self):
-    self.TestLint('if (cond) { func(); };',
+    self.TestLintContains('if (cond) { func(); };',
                   'You don\'t need a ; after a }  [readability/braces] [4]')
     self.TestLint('void Func() {};',
                   'You don\'t need a ; after a }  [readability/braces] [4]')
@@ -2847,7 +2868,9 @@ class CpplintTest(CpplintTestBase):
                            '  }\n'
                            '};\n', '')
     self.TestMultiLineLint('if (true) {\n'
-                           '  if (false){ func(); }\n'
+                           '  if (false){\n'
+                           '    func();\n'
+                           '  }'
                            '}\n',
                            'Missing space before {  [whitespace/braces] [5]')
     self.TestMultiLineLint('MyClass::MyClass()\n'
@@ -2997,8 +3020,12 @@ class CpplintTest(CpplintTestBase):
                            '  [whitespace/empty_if_body] [4]')
     self.TestMultiLineLint("""if (test)
                              func();""", '')
-    self.TestLint('if (test) { hello; }', '')
-    self.TestLint('if (test({})) { hello; }', '')
+    self.TestLint('if (test) { hello; }',
+                  'Controlled statements inside brackets of if clause should be on a separate line'
+                  '  [whitespace/newline] [5]')
+    self.TestLint('if (test({})) { hello; }',
+                  'Controlled statements inside brackets of if clause should be on a separate line'
+                  '  [whitespace/newline] [5]')
     self.TestMultiLineLint("""if (test) {
                              func();
                            }""", '')
@@ -3700,16 +3727,6 @@ class CpplintTest(CpplintTestBase):
         'Namespace should be terminated with "// namespace no_warning"'
         '  [readability/namespace] [5]'))
 
-  def testElseClauseNotOnSameLineAsElse(self):
-    self.TestLint('  else DoSomethingElse();',
-                  'Else clause should never be on same line as else '
-                  '(use 2 lines)  [whitespace/newline] [4]')
-    self.TestLint('  else ifDoSomethingElse();',
-                  'Else clause should never be on same line as else '
-                  '(use 2 lines)  [whitespace/newline] [4]')
-    self.TestLint('  } else if (blah) {', '')
-    self.TestLint('  variable_ends_in_else = true;', '')
-
   def testComma(self):
     self.TestLint('a = f(1,2);',
                   'Missing space after ,  [whitespace/comma] [3]')
@@ -4089,13 +4106,6 @@ class CpplintTest(CpplintTestBase):
         '  [whitespace/braces] [4]')
     self.TestMultiLineLint(
         """
-        if (foo) { \\
-          bar; \\
-          baz; \\
-        }""",
-        '')
-    self.TestMultiLineLint(
-        """
         void foo() { if (bar) baz; }""",
         '')
     self.TestMultiLineLint(
@@ -4133,6 +4143,33 @@ class CpplintTest(CpplintTestBase):
           bar();
         #endif""",
         '')
+
+  @parameterized.expand(['else if', 'if', 'while', 'for', 'switch'])
+  def testControlClauseWithParensNewline(self, keyword):
+    # The % 2 part is pseudorandom whitespace-support testing
+    self.TestLintContains(
+      f'{keyword}{["", " "][len(keyword) % 2]}(condition)'
+        f'{[" ", ""][len(keyword) % 2]}[[unlikely]]'
+        f'{[" ", ""][len(keyword) % 2]}{{'
+        f'{["", " "][len(keyword) % 2]}do_something(); }}',
+      f'Controlled statements inside brackets of {keyword} clause'
+        f' should be on a separate line  [whitespace/newline] [5]'
+    )
+
+  @parameterized.expand(['else', 'do', 'try'])
+  def testControlClauseWithoutParensNewline(self, keyword):
+    # The % 2 part is pseudorandom whitespace-support testing
+    self.TestLintContains(
+      f'{keyword}{["", " "][len(keyword) % 2]}{{'
+        f'{[" ", ""][len(keyword) % 2]}do_something(); }}',
+      f'Controlled statements inside brackets of {keyword} clause'
+        f' should be on a separate line  [whitespace/newline] [5]'
+    )
+
+  def testControlClauseNewlineNameFalsePositives(self):
+    self.TestLint('  else if_condition_do_something();', '')
+    self.TestLint('  } else if (blah) {', '')
+    self.TestLint('  variable_ends_in_else = true;', '')
 
   def testTab(self):
     self.TestLint('\tint a;',
