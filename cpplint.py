@@ -308,8 +308,14 @@ _ERROR_CATEGORIES = [
     "build/include_order",
     "build/include_what_you_use",
     "build/namespaces_headers",
-    "build/namespaces_literals",
-    "build/namespaces",
+    "build/namespaces/header/block/literals",
+    "build/namespaces/header/block/nonliterals",
+    "build/namespaces/header/namespace/literals",
+    "build/namespaces/header/namespace/nonliterals",
+    "build/namespaces/source/block/literals",
+    "build/namespaces/source/block/nonliterals",
+    "build/namespaces/source/namespace/literals",
+    "build/namespaces/source/namespace/nonliterals",
     "build/printf_format",
     "build/storage_class",
     "legal/copyright",
@@ -6021,22 +6027,20 @@ def CheckLanguage(
         )
 
     if re.search(r"\busing namespace\b", line):
-        if re.search(r"\bliterals\b", line):
-            error(
-                filename,
-                linenum,
-                "build/namespaces_literals",
-                5,
-                "Do not use namespace using-directives.  Use using-declarations instead.",
-            )
-        else:
-            error(
-                filename,
-                linenum,
-                "build/namespaces",
-                5,
-                "Do not use namespace using-directives.  Use using-declarations instead.",
-            )
+        is_literals = re.search(r"\bliterals\b", line) is not None
+        is_header = not _IsSourceExtension(file_extension)
+        file_type = "header" if is_header else "source"
+
+        is_block_scope = nesting_state.stack or not line.startswith("using namespace")
+
+        scope_type = "block" if is_block_scope else "namespace"
+        literal_type = "literals" if is_literals else "nonliterals"
+
+        specific_category = f"build/namespaces/{file_type}/{scope_type}/{literal_type}"
+
+        error(filename, linenum, specific_category, 5,
+              "Do not use namespace using-directives.  "
+              "Use using-declarations instead.")
 
     # Detect variable-length arrays.
     match = re.match(r"\s*(.+::)?(\w+) [a-z]\w*\[(.+)];", line)
