@@ -6038,9 +6038,13 @@ def CheckLanguage(
 
         specific_category = f"build/namespaces/{file_type}/{scope_type}/{literal_type}"
 
-        error(filename, linenum, specific_category, 5,
-              "Do not use namespace using-directives.  "
-              "Use using-declarations instead.")
+        error(
+            filename,
+            linenum,
+            specific_category,
+            5,
+            "Do not use namespace using-directives.  Use using-declarations instead.",
+        )
 
     # Detect variable-length arrays.
     match = re.match(r"\s*(.+::)?(\w+) [a-z]\w*\[(.+)];", line)
