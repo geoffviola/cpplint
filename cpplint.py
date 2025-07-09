@@ -6041,7 +6041,7 @@ def CheckLanguage(
 
         # Check for the block scope for multi line blocks.
         # Check if the line starts with the using directive as a hueristic in case it's all one line
-        is_block_scope = nesting_state.IsInBlockScope() and not line.startswith("using namespace")
+        is_block_scope = nesting_state.InBlockScope() and not line.startswith("using namespace")
 
         scope_type = "block" if is_block_scope else "namespace"
         literal_type = "literals" if is_literals else "nonliterals"
