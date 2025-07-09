@@ -941,12 +941,14 @@ _SED_FIXUPS = {
     "Missing space after ,": r"s/,\([^ ]\)/, \1/g",
 }
 
- # Used for backwards compatibility and ease of use
+# Used for backwards compatibility and ease of use
 _FILTER_SHORTCUTS = {
-    "build/namespaces_literals" : ["build/namespaces/header/block/literals",
-                                   "build/namespaces/header/namespace/literals",
-                                   "build/namespaces/source/block/literals",
-                                   "build/namespaces/source/namespace/literals"]
+    "build/namespaces_literals": [
+        "build/namespaces/header/block/literals",
+        "build/namespaces/header/namespace/literals",
+        "build/namespaces/source/block/literals",
+        "build/namespaces/source/namespace/literals",
+    ]
 }
 
 # The root directory used for deriving header guard CPP variable.
