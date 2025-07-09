@@ -3293,6 +3293,14 @@ class NestingState:
         """
         return self.stack and self.stack[-1].inline_asm != _NO_ASM
 
+    def InBlockScope(self):
+        """Check if we are currently one level inside a block scope.
+
+        Returns:
+          True if top of the stack is a block scope, False otherwise.
+        """
+        return len(self.stack) > 0 and not isinstance(self.stack[-1], _NamespaceInfo)
+
     def InTemplateArgumentList(self, clean_lines, linenum, pos):
         """Check if current position is inside template argument list.
 
@@ -6031,7 +6039,9 @@ def CheckLanguage(
         is_header = not _IsSourceExtension(file_extension)
         file_type = "header" if is_header else "source"
 
-        is_block_scope = nesting_state.stack or not line.startswith("using namespace")
+        # Check for the block scope for multi line blocks.
+        # Check if the line starts with the using directive as a hueristic in case it's all one line
+        is_block_scope = nesting_state.IsInBlockScope() and not line.startswith("using namespace")
 
         scope_type = "block" if is_block_scope else "namespace"
         literal_type = "literals" if is_literals else "nonliterals"
