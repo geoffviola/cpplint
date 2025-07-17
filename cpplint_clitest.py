@@ -37,6 +37,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import textwrap
 
 import pytest
 from testfixtures import compare  # type: ignore[import-untyped]
@@ -222,6 +223,49 @@ class TestSvnRepoSignature(TemporaryFolderClassSetup):
 
     def test_codelite_sample(self):
         self.check_all_in_folder("./samples/codelite-sample", 1)
+
+
+# Tests for third_party_headers option
+def TestThirdPartyHeadersDefault(tmp_path):
+    # By default, headers with uppercase letters are treated as third-party and not flagged
+    cpp = tmp_path / "test.cpp"
+    cpp.write_text(textwrap.dedent("""
+        #include "Foo.h"
+        int main() { return 0; }
+    """))
+    status, _, err = run_shell_command(BASE_CMD, f"{cpp.name}", cwd=str(tmp_path))
+    assert status == 0
+    # No include_subdir warning
+    assert b"build/include_subdir" not in err
+
+def TestThirdPartyHeadersOverride(tmp_path):
+    # Override third_party_headers so Foo.h is not recognized as third-party
+    cpp = tmp_path / "test.cpp"
+    cpp.write_text(textwrap.dedent("""
+        #include "Foo.h"
+        int main() { return 0; }
+    """))
+    # Use a pattern that matches nothing
+    flag = "--third_party_headers=^Bar.h$"
+    status, _, err = run_shell_command(BASE_CMD, f"{flag} {cpp.name}", cwd=str(tmp_path))
+    # Expect a warning about include_subdir
+    assert status != 0
+    assert b"build/include_subdir" in err
+
+def TestThirdPartyHeadersConfig(tmp_path):
+    # Override third_party_headers via config file so Foo.h is not recognized as third-party
+    cpp = tmp_path / "test.cpp"
+    cpp.write_text(textwrap.dedent("""
+        #include "Foo.h"
+        int main() { return 0; }
+    """))
+    # Write configuration file to override third_party_headers
+    config = tmp_path / "CPPLINT.cfg"
+    config.write_text("third_party_headers=^Bar.h$\n")
+    status, _, err = run_shell_command(BASE_CMD, f"{cpp.name}", cwd=str(tmp_path))
+    # Expect a warning about include_subdir due to override
+    assert status != 0
+    assert b"build/include_subdir" in err
 
 
 if __name__ == "__main__":

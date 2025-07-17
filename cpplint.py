@@ -68,7 +68,7 @@ Syntax: cpplint.py [--verbose=#] [--output=emacs|eclipse|vs7|junit|sed|gsed]
                    [--filter=-x,+y,...]
                    [--counting=total|toplevel|detailed] [--root=subdir]
                    [--repository=path]
-                   [--linelength=digits] [--headers=x,y,...]
+                   [--linelength=digits] [--headers=x,y,...] [--third_party_headers=pattern]
                    [--recursive]
                    [--exclude=path]
                    [--extensions=hpp,cpp,...]
@@ -240,6 +240,8 @@ Syntax: cpplint.py [--verbose=#] [--output=emacs|eclipse|vs7|junit|sed|gsed]
       The header extensions that cpplint will treat as .h in checks. Values are
       automatically added to --extensions list.
      (by default, only files with extensions %s will be assumed to be headers)
+    third_party_headers=pattern
+      Regex for identifying third-party headers to exclude from include checks.
 
       Examples:
         --headers=%s
@@ -256,6 +258,7 @@ Syntax: cpplint.py [--verbose=#] [--output=emacs|eclipse|vs7|junit|sed|gsed]
       linelength=80
       root=subdir
       headers=x,y,...
+      third_party_headers=pattern
 
     "set noparent" option prevents cpplint from traversing directory tree
     upwards looking for more .cfg files in parent directories. This option
@@ -812,14 +815,6 @@ _TYPES = re.compile(
     r")$"
 )
 
-
-# These headers are excluded from [build/include] and [build/include_order]
-# checks:
-# - Anything not following google file name conventions (containing an
-#   uppercase character, such as Python.h or nsStringAPI.h, for example).
-# - Lua headers.
-_THIRD_PARTY_HEADERS_PATTERN = re.compile(r"^(?:[^/]*[A-Z][^/]*\.h|lua\.h|lauxlib\.h|lualib\.h)$")
-
 # Pattern for matching FileInfo.BaseName() against test file name
 _test_suffixes = ["_test", "_regtest", "_unittest"]
 _TEST_FILE_SUFFIX = "(" + "|".join(_test_suffixes) + r")$"
@@ -981,6 +976,15 @@ _config_filename = "CPPLINT.cfg"
 # This is set by --headers flag.
 _hpp_headers: set[str] = set()
 
+# These headers are excluded from [build/include_subdir], [build/include_order], and
+# [build/include_alpha]
+# The default checks are following
+# - Anything not following google file name conventions (containing an
+#   uppercase character, such as Python.h or nsStringAPI.h, for example).
+# - Lua headers.
+# Default pattern for third-party headers (uppercase .h or Lua headers).
+_third_party_headers_default = r"^(?:[^/]*[A-Z][^/]*\.h|lua\.h|lauxlib\.h|lualib\.h)$"
+_third_party_headers_pattern = re.compile(_third_party_headers_default)
 
 class ErrorSuppressions:
     """Class to track all error suppressions for cpplint"""
@@ -1070,6 +1074,14 @@ def ProcessIncludeOrderOption(val):
         _include_order = val
     else:
         PrintUsage("Invalid includeorder value %s. Expected default|standardcfirst")
+
+def ProcessThirdPartyHeadersOption(val):
+    """Sets the regex pattern for third-party headers."""
+    global _third_party_headers_pattern
+    try:
+        _third_party_headers_pattern = re.compile(val)
+    except re.error:
+        PrintUsage(f"Invalid third_party_headers pattern: {val}")
 
 
 def IsHeaderExtension(file_extension):
@@ -5744,7 +5756,7 @@ def CheckIncludeLine(filename, clean_lines, linenum, include_state, error):
     if (
         match
         and IsHeaderExtension(match.group(2))
-        and not _THIRD_PARTY_HEADERS_PATTERN.match(match.group(1))
+        and not _third_party_headers_pattern.match(match.group(1))
     ):
         error(
             filename,
@@ -5797,7 +5809,7 @@ def CheckIncludeLine(filename, clean_lines, linenum, include_state, error):
                 third_src_header = True
                 break
 
-        if third_src_header or not _THIRD_PARTY_HEADERS_PATTERN.match(include):
+        if third_src_header or not _third_party_headers_pattern.match(include):
             include_state.include_list[-1].append((include, linenum))
 
             # We want to ensure that headers appear in the right order:
@@ -7527,6 +7539,8 @@ def ProcessConfigOverrides(filename):
                         _root = os.path.join(os.path.dirname(cfg_file), val)
                     elif name == "headers":
                         ProcessHppHeadersOption(val)
+                    elif name == "third_party_headers":
+                        ProcessThirdPartyHeadersOption(val)
                     elif name == "includeorder":
                         ProcessIncludeOrderOption(val)
                     else:
@@ -7711,6 +7725,7 @@ def ParseArguments(args):
                 "exclude=",
                 "recursive",
                 "headers=",
+                "third_party_headers=",
                 "includeorder=",
                 "config=",
                 "quiet",
@@ -7770,6 +7785,8 @@ def ParseArguments(args):
             ProcessExtensionsOption(val)
         elif opt == "--headers":
             ProcessHppHeadersOption(val)
+        elif opt == "--third_party_headers":
+            ProcessThirdPartyHeadersOption(val)
         elif opt == "--recursive":
             recursive = True
         elif opt == "--includeorder":
