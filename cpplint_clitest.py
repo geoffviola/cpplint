@@ -229,23 +229,28 @@ class TestSvnRepoSignature(TemporaryFolderClassSetup):
 def test_third_party_headers_default(tmp_path):
     # By default, headers with uppercase letters are treated as third-party and not flagged
     cpp = tmp_path / "test.cpp"
-    cpp.write_text(textwrap.dedent("""
+    cpp.write_text(
+        textwrap.dedent("""
         // Copyright 2025 cpplint
         #include "Foo.h"
         int main() { return 0; }
-    """))
+    """)
+    )
     status, out, err = run_shell_command(BASE_CMD, f"{cpp.name}", cwd=str(tmp_path))
     assert status == 0, f"stdout\n{out.decode('utf-8')}\nstderr\n{err.decode('utf-8')}"
     # No include_subdir warning
     assert b"build/include_subdir" not in err
 
+
 def test_third_party_headers_override(tmp_path):
     # Override third_party_headers so Foo.h is not recognized as third-party
     cpp = tmp_path / "test.cpp"
-    cpp.write_text(textwrap.dedent("""
+    cpp.write_text(
+        textwrap.dedent("""
         // Copyright 2025 cpplint
         #include "Foo.h"
-    """))
+    """)
+    )
     # Use a pattern that matches nothing
     flag = "--third_party_headers=^Bar.h$"
     status, out, err = run_shell_command(BASE_CMD, f"{flag} {cpp.name}", cwd=str(tmp_path))
@@ -253,13 +258,16 @@ def test_third_party_headers_override(tmp_path):
     assert status == 1, f"stdout\n{out.decode('utf-8')}\nstderr\n{err.decode('utf-8')}"
     assert b"build/include_subdir" in err
 
+
 def test_third_party_headers_config(tmp_path):
     # Override third_party_headers via config file so Foo.h is not recognized as third-party
     cpp = tmp_path / "test.cpp"
-    cpp.write_text(textwrap.dedent("""
+    cpp.write_text(
+        textwrap.dedent("""
         // Copyright 2025 cpplint
         #include "Foo.h"
-    """))
+    """)
+    )
     # Write configuration file to override third_party_headers
     config = tmp_path / "CPPLINT.cfg"
     config.write_text("third_party_headers=^Bar.h$\n")

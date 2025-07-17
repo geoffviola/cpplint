@@ -986,6 +986,7 @@ _hpp_headers: set[str] = set()
 _third_party_headers_default = r"^(?:[^/]*[A-Z][^/]*\.h|lua\.h|lauxlib\.h|lualib\.h)$"
 _third_party_headers_pattern = re.compile(_third_party_headers_default)
 
+
 class ErrorSuppressions:
     """Class to track all error suppressions for cpplint"""
 
@@ -1074,6 +1075,7 @@ def ProcessIncludeOrderOption(val):
         _include_order = val
     else:
         PrintUsage("Invalid includeorder value %s. Expected default|standardcfirst")
+
 
 def ProcessThirdPartyHeadersOption(val):
     """Sets the regex pattern for third-party headers."""
