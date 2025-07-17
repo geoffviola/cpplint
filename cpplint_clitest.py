@@ -226,7 +226,7 @@ class TestSvnRepoSignature(TemporaryFolderClassSetup):
 
 
 # Tests for third_party_headers option
-def TestThirdPartyHeadersDefault(tmp_path):
+def test_third_party_headers_default(tmp_path):
     # By default, headers with uppercase letters are treated as third-party and not flagged
     cpp = tmp_path / "test.cpp"
     cpp.write_text(textwrap.dedent("""
@@ -238,7 +238,7 @@ def TestThirdPartyHeadersDefault(tmp_path):
     # No include_subdir warning
     assert b"build/include_subdir" not in err
 
-def TestThirdPartyHeadersOverride(tmp_path):
+def test_third_party_headers_override(tmp_path):
     # Override third_party_headers so Foo.h is not recognized as third-party
     cpp = tmp_path / "test.cpp"
     cpp.write_text(textwrap.dedent("""
@@ -252,7 +252,7 @@ def TestThirdPartyHeadersOverride(tmp_path):
     assert status != 0
     assert b"build/include_subdir" in err
 
-def TestThirdPartyHeadersConfig(tmp_path):
+def test_third_party_headers_config(tmp_path):
     # Override third_party_headers via config file so Foo.h is not recognized as third-party
     cpp = tmp_path / "test.cpp"
     cpp.write_text(textwrap.dedent("""
