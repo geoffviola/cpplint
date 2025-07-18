@@ -983,8 +983,8 @@ _hpp_headers: set[str] = set()
 #   uppercase character, such as Python.h or nsStringAPI.h, for example).
 # - Lua headers.
 # Default pattern for third-party headers (uppercase .h or Lua headers).
-_third_party_headers_default = r"^(?:[^/]*[A-Z][^/]*\.h|lua\.h|lauxlib\.h|lualib\.h)$"
-_third_party_headers_pattern = re.compile(_third_party_headers_default)
+_THIRD_PARTY_HEADERS_DEFAULT = r"^(?:[^/]*[A-Z][^/]*\.h|lua\.h|lauxlib\.h|lualib\.h)$"
+_third_party_headers_pattern = re.compile(_THIRD_PARTY_HEADERS_DEFAULT)
 
 
 class ErrorSuppressions:
